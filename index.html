@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片转视频工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto p-4 max-w-3xl">
+        <h1 class="text-2xl font-bold text-gray-900 mb-6">图片合成视频工具</h1>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-4">
+            <!-- 图片选择（文件夹或多文件） -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">选择图片（文件夹或多文件）</label>
+                <input type="file" id="imageInput" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                       accept="image/*" 
+                       webkitdirectory
+                       directory
+                       multiple> 
+                <p class="mt-2 text-sm text-gray-500">支持直接选择文件夹或按住Ctrl/Command多选图片（图片将按文件名排序）</p>
+            </div>
+
+            <!-- 参数设置 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">切换时间（秒）</label>
+                    <input type="number" id="switchTime" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" value="0.5" min="0.1" step="0.1">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">背景音乐（可选）</label>
+                    <input type="file" id="audioInput" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" accept="audio/*">
+                </div>
+            </div>
+
+            <!-- 提交按钮 -->
+            <button id="submitBtn" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors disabled:opacity-50">
+                <i class="fas fa-video mr-2"></i> 开始生成视频
+            </button>
+        </div>
+
+        <!-- 进度提示 -->
+        <div id="progress" class="bg-white rounded-lg shadow-md p-6 hidden">
+            <div class="flex items-center">
+                <i class="fas fa-spinner fa-spin text-blue-600 mr-3"></i>
+                <p id="progressText" class="text-gray-700">正在处理...</p>
+            </div>
+            <div class="mt-3">
+                <progress id="progressBar" class="w-full" value="0" max="100"></progress>
+            </div>
+        </div>
+
+        <!-- 结果展示 -->
+        <div id="result" class="bg-white rounded-lg shadow-md p-6 hidden">
+            <h3 class="text-lg font-medium text-gray-900 mb-3">视频生成完成！</h3>
+            <a id="downloadLink" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md inline-block" download>
+                <i class="fas fa-download mr-2"></i> 下载视频
+            </a>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('submitBtn').addEventListener('click', async () => {
+            const formData = new FormData();
+            const imageFiles = document.getElementById('imageInput').files;
+            const audioFile = document.getElementById('audioInput').files[0];
+            const switchTime = document.getElementById('switchTime').value;
+
+            if (imageFiles.length === 0) {
+                alert('请选择图片文件夹或多图片文件');
+                return;
+            }
+
+            // 遍历选中的图片文件（文件夹或多文件）
+            for (const file of imageFiles) {
+                formData.append('images', file);  // 关键：直接上传图片文件
+            }
+            if (audioFile) formData.append('audio', audioFile);
+            formData.append('switch_time', switchTime);
+
+            // 显示进度
+            document.getElementById('progress').classList.remove('hidden');
+            document.getElementById('result').classList.add('hidden');
+            document.getElementById('submitBtn').disabled = true;
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('处理失败');
+                const videoBlob = await response.blob();
+                
+                // 生成下载链接
+                const downloadLink = document.getElementById('downloadLink');
+                const url = URL.createObjectURL(videoBlob);
+                downloadLink.href = url;
+                downloadLink.download = `合成视频_${new Date().toISOString().split('T')[0]}.mp4`;
+                
+                // 显示结果
+                document.getElementById('result').classList.remove('hidden');
+                document.getElementById('progress').classList.add('hidden');
+            } catch (error) {
+                alert(`错误：${error.message}`);
+                document.getElementById('progress').classList.add('hidden');
+            } finally {
+                document.getElementById('submitBtn').disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
